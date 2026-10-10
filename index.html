@@ -1,0 +1,769 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TelecomInsight BW | Network Intelligence</title>
+<meta name="description" content="Telecom service quality and customer experience dashboard for Botswana.">
+<link rel="preconnect" href="https://cdn.jsdelivr.net">
+<link rel="preconnect" href="https://unpkg.com">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root {
+  --purple:#7057d9; --blue:#245db8; --light:#f3f0ff;
+  --ink:#20283a; --muted:#697386; --border:#e4e8f0;
+  --page:#f8faff; --cyan:#16a6a1; --white:#fff;
+  --shadow:0 8px 24px rgba(34,48,90,.06)
+}
+* { box-sizing:border-box }
+body {
+  margin:0; background:var(--page); color:var(--ink);
+  font:15px/1.5 Inter,ui-sans-serif,system-ui,-apple-system,
+  BlinkMacSystemFont,"Segoe UI",sans-serif
+}
+header {
+  background:linear-gradient(120deg,#fff 0%,#f3f0ff 60%,#eef5ff 100%);
+  border-bottom:1px solid var(--border);
+  padding:26px max(20px,calc((100% - 1400px)/2));
+  display:flex; align-items:center; justify-content:space-between;
+  gap:20px; flex-wrap:wrap
+}
+.brand { display:flex; gap:13px; align-items:center }
+.logo {
+  width:48px; height:48px; border-radius:15px;
+  background:linear-gradient(135deg,var(--purple),var(--blue));
+  display:grid; place-items:center; color:white;
+  font-weight:900; font-size:21px;
+  box-shadow:0 7px 18px #7057d944
+}
+.eyebrow {
+  font-size:11px; letter-spacing:.16em;
+  text-transform:uppercase; color:var(--purple); font-weight:800
+}
+.brand h1 { margin:0; font-size:25px; letter-spacing:-.04em }
+.brand p { margin:2px 0 0; color:var(--muted); font-size:13px }
+.header-right { display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+.pill {
+  border:1px solid #ded7ff; background:#fff; color:#6046c4;
+  padding:7px 12px; border-radius:999px; font-size:12px; font-weight:750
+}
+.container { max-width:1400px; margin:0 auto; padding:24px 20px 50px }
+.intro {
+  display:flex; justify-content:space-between; gap:20px;
+  align-items:end; margin-bottom:18px; flex-wrap:wrap
+}
+.intro h2 { font-size:23px; letter-spacing:-.03em; margin:0 0 4px }
+.intro p { margin:0; color:var(--muted) }
+.button {
+  border:0; border-radius:10px; padding:10px 14px;
+  background:var(--purple); color:#fff; font-weight:750;
+  cursor:pointer; font-size:13px
+}
+.button.secondary { background:white; color:var(--blue); border:1px solid var(--border) }
+.button:hover { filter:brightness(.97) }
+.panel {
+  background:#fff; border:1px solid var(--border); border-radius:16px;
+  padding:18px; box-shadow:var(--shadow); min-width:0
+}
+.filters {
+  display:grid; grid-template-columns:repeat(5,minmax(130px,1fr));
+  gap:12px; margin-bottom:18px
+}
+.field label {
+  display:block; font-size:11px; text-transform:uppercase;
+  letter-spacing:.07em; color:var(--muted); font-weight:800; margin-bottom:6px
+}
+.field select,.field input {
+  width:100%; border:1px solid var(--border); background:#fff;
+  border-radius:9px; padding:10px; color:var(--ink);
+  font:inherit; font-size:13px
+}
+.filter-actions { display:flex; gap:8px; align-items:end }
+.kpis {
+  display:grid; grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:14px; margin-bottom:18px
+}
+.kpi { position:relative; overflow:hidden }
+.kpi:after {
+  content:""; position:absolute; right:-25px; top:-28px;
+  width:90px; height:90px; border-radius:50%;
+  background:var(--light); opacity:.8
+}
+.kpi .label { font-size:12px; color:var(--muted); font-weight:700 }
+.kpi .value { font-size:30px; font-weight:850; letter-spacing:-.05em; margin:5px 0 }
+.kpi .hint { font-size:12px; color:var(--muted) }
+.dot {
+  display:inline-block; width:8px; height:8px; border-radius:50%;
+  background:var(--purple); margin-right:6px
+}
+.section-head {
+  display:flex; align-items:start; justify-content:space-between;
+  gap:10px; margin-bottom:14px
+}
+.section-head h3 { font-size:16px; margin:0; letter-spacing:-.02em }
+.section-head p { font-size:12px; color:var(--muted); margin:3px 0 0 }
+.grid-2 {
+  display:grid; grid-template-columns:repeat(2,minmax(0,1fr));
+  gap:16px; margin-bottom:16px
+}
+.chart-wrap { height:290px; position:relative }
+.map-wrap { height:370px; border-radius:12px; overflow:hidden; background:#eef2f8 }
+.map-note { font-size:11px; color:var(--muted); margin-top:9px }
+.geo-controls { display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+.geo-controls select {
+  padding:8px; border:1px solid var(--border); border-radius:9px;
+  color:var(--ink); background:white
+}
+.table-scroll {
+  overflow:auto; max-height:420px;
+  border:1px solid var(--border); border-radius:11px
+}
+table { width:100%; border-collapse:collapse; white-space:nowrap; font-size:12px }
+th {
+  position:sticky; top:0; background:#f7f8fc; color:#59647a;
+  text-align:left; font-size:10px; text-transform:uppercase;
+  letter-spacing:.06em; z-index:1
+}
+th,td { padding:11px 12px; border-bottom:1px solid var(--border) }
+tbody tr:hover { background:#faf9ff }
+.badge { display:inline-block; padding:3px 8px; border-radius:999px; font-size:10px; font-weight:800 }
+.yes { background:#fff0ed; color:#b74b36 }
+.no { background:#e7f8f4; color:#187c69 }
+.footer { color:var(--muted); font-size:11px; text-align:center; margin-top:20px }
+.empty { padding:35px; text-align:center; color:var(--muted) }
+.file-label { display:inline-flex; align-items:center; gap:8px }
+.file-label input { max-width:190px; font-size:12px }
+.status { font-size:12px; color:var(--muted); margin-top:8px }
+
+@media(max-width:900px) {
+  .filters { grid-template-columns:repeat(2,minmax(0,1fr)) }
+  .kpis { grid-template-columns:repeat(2,minmax(0,1fr)) }
+  .grid-2 { grid-template-columns:1fr }
+  .map-wrap { height:320px }
+}
+@media(max-width:520px) {
+  header { padding:18px }
+  .container { padding:18px 12px 35px }
+  .brand h1 { font-size:21px }
+  .filters { grid-template-columns:1fr 1fr }
+  .kpi .value { font-size:25px }
+  .panel { padding:14px }
+  .chart-wrap { height:250px }
+  .intro h2 { font-size:20px }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <div class="logo">TI</div>
+    <div>
+      <div class="eyebrow">Network intelligence</div>
+      <h1>TelecomInsight <span style="color:var(--purple)">BW</span></h1>
+      <p>Telecom service quality & customer experience</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <span class="pill">BOTSWANA · DASHBOARD</span>
+    <label class="button secondary file-label">
+      Import CSV
+      <input id="csvFile" type="file" accept=".csv,text/csv" style="display:none">
+    </label>
+    <button class="button" id="downloadFiltered">Export filtered CSV ↓</button>
+  </div>
+</header>
+
+<main class="container">
+  <div class="intro">
+    <div>
+      <h2>Service quality overview</h2>
+      <p>Explore reported issues, network performance and location-level trends.</p>
+    </div>
+    <div class="status" id="dataStatus">Loading demonstration dataset…</div>
+  </div>
+
+  <section class="panel filters">
+    <div class="field">
+      <label for="providerFilter">Provider</label>
+      <select id="providerFilter"><option value="all">All providers</option></select>
+    </div>
+    <div class="field">
+      <label for="locationFilter">Location</label>
+      <select id="locationFilter"><option value="all">All locations</option></select>
+    </div>
+    <div class="field">
+      <label for="issueFilter">Issue type</label>
+      <select id="issueFilter"><option value="all">All issues</option></select>
+    </div>
+    <div class="field">
+      <label for="fromDate">From date</label>
+      <input type="date" id="fromDate">
+    </div>
+    <div class="field">
+      <label for="toDate">To date</label>
+      <input type="date" id="toDate">
+    </div>
+    <div class="filter-actions">
+      <button class="button secondary" id="resetFilters">Reset filters</button>
+    </div>
+  </section>
+
+  <section class="kpis">
+    <article class="panel kpi">
+      <div class="label"><span class="dot"></span>Records analysed</div>
+      <div class="value" id="kRecords">—</div>
+      <div class="hint">Rows matching current filters</div>
+    </article>
+    <article class="panel kpi">
+      <div class="label"><span class="dot" style="background:#e66a58"></span>Reported complaints</div>
+      <div class="value" id="kComplaints">—</div>
+      <div class="hint" id="complaintRate">Complaint rate: —</div>
+    </article>
+    <article class="panel kpi">
+      <div class="label"><span class="dot" style="background:var(--blue)"></span>Avg. download speed</div>
+      <div class="value" id="kDownload">—</div>
+      <div class="hint">Mbps · higher is generally better</div>
+    </article>
+    <article class="panel kpi">
+      <div class="label"><span class="dot" style="background:var(--cyan)"></span>Avg. latency</div>
+      <div class="value" id="kLatency">—</div>
+      <div class="hint">ms · lower is generally better</div>
+    </article>
+  </section>
+
+  <section class="grid-2">
+    <article class="panel">
+      <div class="section-head">
+        <div><h3>Reported issues</h3><p>Issue categories in the selected data</p></div>
+      </div>
+      <div class="chart-wrap"><canvas id="issuesChart"></canvas></div>
+    </article>
+    <article class="panel">
+      <div class="section-head">
+        <div><h3>Complaints by provider</h3><p>Reported complaints grouped by provider</p></div>
+      </div>
+      <div class="chart-wrap"><canvas id="providerChart"></canvas></div>
+    </article>
+  </section>
+
+  <section class="grid-2">
+    <article class="panel">
+      <div class="section-head">
+        <div><h3>Network performance trend</h3><p>Average download speed by date</p></div>
+        <div class="field">
+          <select id="trendMetric" aria-label="Trend metric">
+            <option value="download_mbps">Download Mbps</option>
+            <option value="latency_ms">Latency ms</option>
+            <option value="upload_mbps">Upload Mbps</option>
+          </select>
+        </div>
+      </div>
+      <div class="chart-wrap"><canvas id="trendChart"></canvas></div>
+    </article>
+    <article class="panel">
+      <div class="section-head">
+        <div><h3>Location comparison</h3><p>Average performance across selected locations</p></div>
+      </div>
+      <div class="chart-wrap"><canvas id="locationChart"></canvas></div>
+    </article>
+  </section>
+
+  <section class="panel" style="margin-bottom:16px">
+    <div class="section-head">
+      <div><h3>Geographic service overview</h3><p>Explore locations represented in the filtered records</p></div>
+      <div class="geo-controls">
+        <label for="mapMetric" style="font-size:12px;color:var(--muted)">Marker metric</label>
+        <select id="mapMetric">
+          <option value="complaintRate">Complaint rate</option>
+          <option value="download_mbps">Avg. download speed</option>
+          <option value="latency_ms">Avg. latency</option>
+          <option value="records">Record count</option>
+        </select>
+      </div>
+    </div>
+    <div id="map" class="map-wrap"></div>
+    <p class="map-note">Map pins use approximate city-centre coordinates for recognised Botswana locations. They are not tower locations, measured coverage boundaries, or official provider performance data.</p>
+  </section>
+
+  <section class="panel">
+    <div class="section-head">
+      <div><h3>Geographic summary</h3><p>Aggregated view by location</p></div>
+      <button class="button secondary" id="exportLocations">Export location summary ↓</button>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Location</th><th>Records</th><th>Complaints</th><th>Complaint rate</th><th>Download avg.</th><th>Upload avg.</th><th>Latency avg.</th><th>Satisfaction avg.</th></tr>
+        </thead>
+        <tbody id="geoTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" style="margin-top:16px">
+    <div class="section-head">
+      <div><h3>Filtered records</h3><p id="recordCount">—</p></div>
+    </div>
+    <div class="table-scroll">
+      <table>
+        <thead>
+          <tr><th>Date</th><th>Provider</th><th>Location</th><th>Issue type</th><th>Download Mbps</th><th>Upload Mbps</th><th>Latency ms</th><th>Satisfaction</th><th>Complaint</th></tr>
+        </thead>
+        <tbody id="recordsTable"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <div class="footer">TelecomInsight BW · Dashboard demo · Validate all imported data before drawing operational conclusions.</div>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const coords = {
+  'Gaborone':[-24.6282,25.9231],
+  'Francistown':[-21.1702,27.5144],
+  'Maun':[-19.9833,23.4167],
+  'Palapye':[-22.546,27.125],
+  'Serowe':[-22.3875,26.7108],
+  'Molepolole':[-24.4066,25.4951],
+  'Kanye':[-24.9667,25.3327],
+  'Mahalapye':[-23.104,26.814],
+  'Kasane':[-17.7983,25.15],
+  'Lobatse':[-25.2244,25.6773],
+  'Mochudi':[-24.4167,26.15],
+  'Ghanzi':[-21.6978,21.6458],
+  'Selebi-Phikwe':[-21.979,27.842],
+  'Jwaneng':[-24.6017,24.7281],
+  'Tlokweng':[-24.6667,25.9667]
+};
+
+const sampleFallback = [
+  {date:'2026-09-01',provider:'Provider A',location:'Gaborone',issue_type:'Slow internet',download_mbps:12,upload_mbps:4,latency_ms:65,satisfaction:3,complaint_reported:1},
+  {date:'2026-09-02',provider:'Provider B',location:'Francistown',issue_type:'Weak signal',download_mbps:8,upload_mbps:2,latency_ms:92,satisfaction:2,complaint_reported:1},
+  {date:'2026-09-03',provider:'Provider C',location:'Maun',issue_type:'Dropped connection',download_mbps:15,upload_mbps:5,latency_ms:70,satisfaction:3,complaint_reported:1},
+  {date:'2026-09-04',provider:'Provider A',location:'Palapye',issue_type:'Service interruption',download_mbps:20,upload_mbps:6,latency_ms:55,satisfaction:4,complaint_reported:0},
+  {date:'2026-09-05',provider:'Provider B',location:'Gaborone',issue_type:'Slow internet',download_mbps:10,upload_mbps:3,latency_ms:88,satisfaction:2,complaint_reported:1},
+  {date:'2026-09-06',provider:'Provider C',location:'Francistown',issue_type:'Weak signal',download_mbps:18,upload_mbps:7,latency_ms:48,satisfaction:4,complaint_reported:0},
+  {date:'2026-09-07',provider:'Provider A',location:'Maun',issue_type:'Dropped connection',download_mbps:14,upload_mbps:4,latency_ms:72,satisfaction:3,complaint_reported:1},
+  {date:'2026-09-08',provider:'Provider B',location:'Palapye',issue_type:'Slow internet',download_mbps:22,upload_mbps:8,latency_ms:44,satisfaction:4,complaint_reported:0},
+  {date:'2026-09-09',provider:'Provider C',location:'Gaborone',issue_type:'Service interruption',download_mbps:25,upload_mbps:9,latency_ms:39,satisfaction:5,complaint_reported:0},
+  {date:'2026-09-10',provider:'Provider A',location:'Francistown',issue_type:'Weak signal',download_mbps:9,upload_mbps:3,latency_ms:95,satisfaction:2,complaint_reported:1}
+];
+
+let allData = [], filtered = [], charts = {}, map, markers = [];
+const palette = ['#7057d9','#245db8','#16a6a1','#e77a5d','#8b9ae8','#b5a2f5','#4e8ccf'];
+
+function esc(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  }[c]));
+}
+
+function num(v) {
+  const n = Number(v);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function avg(rows, key) {
+  return rows.length ? rows.reduce((s,r) => s + num(r[key]), 0) / rows.length : 0;
+}
+
+function fmt(n, d=1) {
+  return Number(n).toLocaleString(undefined, {
+    maximumFractionDigits:d,
+    minimumFractionDigits:d
+  });
+}
+
+function normalize(rows) {
+  return rows.map(r => ({
+    date:String(r.date || '').slice(0,10),
+    provider:String(r.provider || 'Unknown'),
+    location:String(r.location || 'Unknown'),
+    issue_type:String(r.issue_type || 'Unspecified'),
+    download_mbps:num(r.download_mbps),
+    upload_mbps:num(r.upload_mbps),
+    latency_ms:num(r.latency_ms),
+    satisfaction:num(r.satisfaction),
+    complaint_reported:
+      (String(r.complaint_reported).toLowerCase() === 'true' ||
+       String(r.complaint_reported) === '1') ? 1 : 0,
+    latitude:r.latitude !== undefined && r.latitude !== '' ? num(r.latitude) : null,
+    longitude:r.longitude !== undefined && r.longitude !== '' ? num(r.longitude) : null
+  }));
+}
+
+function parseCSV(text) {
+  const lines = text.replace(/^\uFEFF/,'').trim().split(/\r?\n/);
+  if (lines.length < 2) throw Error('CSV has no data rows');
+
+  function split(line) {
+    let out=[], cur='', q=false;
+    for (let i=0; i<line.length; i++) {
+      let c=line[i];
+      if (c === '"' && q && line[i+1] === '"') {
+        cur += '"'; i++;
+      } else if (c === '"') {
+        q = !q;
+      } else if (c === ',' && !q) {
+        out.push(cur); cur='';
+      } else {
+        cur += c;
+      }
+    }
+    out.push(cur);
+    return out;
+  }
+
+  const heads = split(lines[0]).map(x => x.trim().toLowerCase());
+  return lines.slice(1).filter(x => x.trim()).map(line => {
+    const cells=split(line), o={};
+    heads.forEach((h,i) => o[h]=(cells[i] || '').trim());
+    return o;
+  });
+}
+
+function options(id, vals, label) {
+  const el=document.getElementById(id), old=el.value;
+  el.innerHTML=`<option value="all">All ${label}</option>` +
+    vals.sort((a,b) => a.localeCompare(b))
+      .map(v => `<option value="${esc(v)}">${esc(v)}</option>`).join('');
+  if (vals.includes(old)) el.value=old;
+}
+
+function initFilters() {
+  options('providerFilter',[...new Set(allData.map(r=>r.provider))],'providers');
+  options('locationFilter',[...new Set(allData.map(r=>r.location))],'locations');
+  options('issueFilter',[...new Set(allData.map(r=>r.issue_type))],'issues');
+
+  const dates=allData.map(r=>r.date).filter(Boolean).sort();
+  document.getElementById('fromDate').value=dates[0] || '';
+  document.getElementById('toDate').value=dates.at(-1) || '';
+}
+
+function aggregate(rows, key) {
+  const m={};
+  rows.forEach(r => {
+    const k=r[key] || 'Unknown';
+    (m[k] ??= []).push(r);
+  });
+
+  return Object.entries(m).map(([name,rs]) => ({
+    name,
+    records:rs.length,
+    complaints:rs.reduce((s,r)=>s+r.complaint_reported,0),
+    complaintRate:rs.length
+      ? 100*rs.reduce((s,r)=>s+r.complaint_reported,0)/rs.length : 0,
+    download_mbps:avg(rs,'download_mbps'),
+    upload_mbps:avg(rs,'upload_mbps'),
+    latency_ms:avg(rs,'latency_ms'),
+    satisfaction:avg(rs,'satisfaction')
+  }));
+}
+
+function makeChart(id, type, data, opts={}) {
+  if (charts[id]) charts[id].destroy();
+
+  charts[id] = new Chart(document.getElementById(id), {
+    type, data,
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{
+        legend:{
+          display:opts.legend ?? (type === 'doughnut'),
+          position:'bottom',
+          labels:{
+            usePointStyle:true, boxWidth:8, padding:16,
+            font:{size:11}
+          }
+        },
+        tooltip:{mode:'index',intersect:false}
+      },
+      scales:type === 'doughnut' ? {} : {
+        x:{
+          grid:{display:false},
+          ticks:{color:'#697386',font:{size:10},maxRotation:35}
+        },
+        y:{
+          beginAtZero:true,
+          grid:{color:'#eef0f6'},
+          ticks:{color:'#697386',font:{size:10}}
+        }
+      },
+      ...opts.options
+    }
+  });
+}
+
+function refresh() {
+  const p=document.getElementById('providerFilter').value;
+  const l=document.getElementById('locationFilter').value;
+  const i=document.getElementById('issueFilter').value;
+  const from=document.getElementById('fromDate').value;
+  const to=document.getElementById('toDate').value;
+
+  filtered=allData.filter(r =>
+    (p === 'all' || r.provider === p) &&
+    (l === 'all' || r.location === l) &&
+    (i === 'all' || r.issue_type === i) &&
+    (!from || r.date >= from) &&
+    (!to || r.date <= to)
+  );
+
+  const complaints=filtered.reduce((s,r)=>s+r.complaint_reported,0);
+  document.getElementById('kRecords').textContent=filtered.length.toLocaleString();
+  document.getElementById('kComplaints').textContent=complaints.toLocaleString();
+  document.getElementById('complaintRate').textContent=
+    `Complaint rate: ${filtered.length ? fmt(complaints/filtered.length*100) : '0'}%`;
+  document.getElementById('kDownload').textContent=fmt(avg(filtered,'download_mbps'))+' Mbps';
+  document.getElementById('kLatency').textContent=fmt(avg(filtered,'latency_ms'))+' ms';
+
+  const issues=aggregate(filtered,'issue_type');
+  makeChart('issuesChart','doughnut',{
+    labels:issues.map(x=>x.name),
+    datasets:[{
+      data:issues.map(x=>x.records),
+      backgroundColor:palette,
+      borderWidth:0,
+      hoverOffset:5
+    }]
+  });
+
+  const providers=aggregate(filtered,'provider');
+  makeChart('providerChart','bar',{
+    labels:providers.map(x=>x.name),
+    datasets:[{
+      label:'Complaints',
+      data:providers.map(x=>x.complaints),
+      backgroundColor:'#7057d9',
+      borderRadius:6,
+      maxBarThickness:42
+    }]
+  },{legend:false});
+
+  const metric=document.getElementById('trendMetric').value;
+  const byDate=aggregate(filtered,'date').sort((a,b)=>a.name.localeCompare(b.name));
+
+  makeChart('trendChart','line',{
+    labels:byDate.map(x=>x.name),
+    datasets:[{
+      label:metric === 'download_mbps' ? 'Avg. download (Mbps)' :
+            metric === 'latency_ms' ? 'Avg. latency (ms)' : 'Avg. upload (Mbps)',
+      data:byDate.map(x=>x[metric]),
+      borderColor:'#245db8',
+      backgroundColor:'#245db822',
+      fill:true,
+      tension:.3,
+      pointRadius:2
+    }]
+  },{legend:false});
+
+  const locs=aggregate(filtered,'location').sort((a,b)=>b.download_mbps-a.download_mbps);
+
+  makeChart('locationChart','bar',{
+    labels:locs.map(x=>x.name),
+    datasets:[{
+      label:'Avg. download (Mbps)',
+      data:locs.map(x=>x.download_mbps),
+      backgroundColor:'#16a6a1',
+      borderRadius:5,
+      maxBarThickness:35
+    }]
+  },{legend:false});
+
+  renderGeo(locs);
+  renderRecords();
+  document.getElementById('recordCount').textContent=
+    `Showing ${filtered.length.toLocaleString()} of ${allData.length.toLocaleString()} records`;
+}
+
+function renderGeo(locs) {
+  const metric=document.getElementById('mapMetric').value;
+
+  document.getElementById('geoTable').innerHTML=locs.map(x=>`
+    <tr>
+      <td><strong>${esc(x.name)}</strong></td>
+      <td>${x.records}</td>
+      <td>${x.complaints}</td>
+      <td>${fmt(x.complaintRate)}%</td>
+      <td>${fmt(x.download_mbps)} Mbps</td>
+      <td>${fmt(x.upload_mbps)} Mbps</td>
+      <td>${fmt(x.latency_ms)} ms</td>
+      <td>${fmt(x.satisfaction,2)} / 5</td>
+    </tr>
+  `).join('') || '<tr><td colspan="8" class="empty">No records match these filters.</td></tr>';
+
+  if (!map) return;
+  markers.forEach(m=>map.removeLayer(m));
+  markers=[];
+
+  locs.forEach(x=>{
+    const row=filtered.filter(r=>r.location===x.name);
+    const custom=row.find(r=>r.latitude!==null && r.longitude!==null);
+    const c=custom ? [custom.latitude,custom.longitude] : coords[x.name];
+    if (!c || !Number.isFinite(c[0]) || !Number.isFinite(c[1])) return;
+
+    let val=metric === 'complaintRate' ? x.complaintRate :
+            metric === 'records' ? x.records : x[metric];
+
+    let label=metric === 'complaintRate' ? fmt(val)+'%' :
+              metric === 'records' ? String(val) :
+              fmt(val)+(metric === 'download_mbps' ? ' Mbps' : ' ms');
+
+    let colour=metric === 'complaintRate'
+      ? (val>=60 ? '#dc5c54' : val>=30 ? '#e5a24d' : '#16a6a1')
+      : metric === 'latency_ms'
+      ? (val>=80 ? '#dc5c54' : val>=50 ? '#e5a24d' : '#16a6a1')
+      : metric === 'download_mbps'
+      ? (val<10 ? '#dc5c54' : val<20 ? '#e5a24d' : '#16a6a1')
+      : '#7057d9';
+
+    const marker=L.circleMarker(c,{
+      radius:Math.min(18,7+x.records/3),
+      color:'#fff',
+      weight:2,
+      fillColor:colour,
+      fillOpacity:.9
+    }).bindPopup(`
+      <strong>${esc(x.name)}</strong><br>
+      Records: ${x.records}<br>
+      Complaints: ${x.complaints} (${fmt(x.complaintRate)}%)<br>
+      Avg. download: ${fmt(x.download_mbps)} Mbps<br>
+      Avg. latency: ${fmt(x.latency_ms)} ms<br>
+      Selected metric: ${label}
+    `);
+
+    marker.addTo(map);
+    markers.push(marker);
+  });
+
+  if (markers.length) {
+    const group=L.featureGroup(markers);
+    map.fitBounds(group.getBounds().pad(.18),{maxZoom:7});
+  }
+}
+
+function renderRecords() {
+  document.getElementById('recordsTable').innerHTML=filtered.slice(0,500).map(r=>`
+    <tr>
+      <td>${esc(r.date)}</td>
+      <td>${esc(r.provider)}</td>
+      <td>${esc(r.location)}</td>
+      <td>${esc(r.issue_type)}</td>
+      <td>${fmt(r.download_mbps)}</td>
+      <td>${fmt(r.upload_mbps)}</td>
+      <td>${fmt(r.latency_ms)}</td>
+      <td>${fmt(r.satisfaction,1)}</td>
+      <td><span class="badge ${r.complaint_reported?'yes':'no'}">${r.complaint_reported?'Reported':'No'}</span></td>
+    </tr>
+  `).join('') || '<tr><td colspan="9" class="empty">No records match these filters.</td></tr>';
+}
+
+function csvDownload(rows,name) {
+  if (!rows.length) {
+    alert('There are no rows to export.');
+    return;
+  }
+
+  const keys=Object.keys(rows[0]);
+  const quote=v=>`"${String(v??'').replace(/"/g,'""')}"`;
+  const csv=[
+    keys.join(','),
+    ...rows.map(r=>keys.map(k=>quote(r[k])).join(','))
+  ].join('\r\n');
+
+  const url=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8;'}));
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportGeo() {
+  csvDownload(
+    aggregate(filtered,'location').map(x=>({
+      location:x.name,
+      records:x.records,
+      complaints:x.complaints,
+      complaint_rate_percent:+x.complaintRate.toFixed(2),
+      avg_download_mbps:+x.download_mbps.toFixed(2),
+      avg_upload_mbps:+x.upload_mbps.toFixed(2),
+      avg_latency_ms:+x.latency_ms.toFixed(2),
+      avg_satisfaction:+x.satisfaction.toFixed(2)
+    })),
+    'telecominsight_location_summary.csv'
+  );
+}
+
+function startMap() {
+  map=L.map('map',{scrollWheelZoom:false}).setView([-22.2,24.5],5);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    maxZoom:18,
+    attribution:'&copy; OpenStreetMap contributors'
+  }).addTo(map);
+}
+
+async function loadData() {
+  try {
+    const res=await fetch('./data/sample_telecom_data.csv');
+    if (!res.ok) throw Error('sample CSV unavailable');
+    allData=normalize(parseCSV(await res.text()));
+    document.getElementById('dataStatus').textContent=
+      `Demo dataset · ${allData.length} records loaded`;
+  } catch(e) {
+    allData=normalize(sampleFallback);
+    document.getElementById('dataStatus').textContent=
+      'Built-in demo data · import your CSV to replace it';
+  }
+
+  initFilters();
+  refresh();
+}
+
+document.getElementById('csvFile').addEventListener('change',async e=>{
+  const f=e.target.files[0];
+  if (!f) return;
+
+  try {
+    allData=normalize(parseCSV(await f.text()));
+    initFilters();
+    refresh();
+    document.getElementById('dataStatus').textContent=
+      `Imported ${f.name} · ${allData.length} records`;
+  } catch(err) {
+    alert('Could not read that CSV. Check that it has the required column headers.');
+  }
+
+  e.target.value='';
+});
+
+[
+  'providerFilter','locationFilter','issueFilter',
+  'fromDate','toDate','trendMetric','mapMetric'
+].forEach(id=>document.getElementById(id).addEventListener('change',refresh));
+
+document.getElementById('resetFilters').addEventListener('click',()=>{
+  ['providerFilter','locationFilter','issueFilter'].forEach(id=>{
+    document.getElementById(id).value='all';
+  });
+
+  const ds=allData.map(r=>r.date).filter(Boolean).sort();
+  document.getElementById('fromDate').value=ds[0] || '';
+  document.getElementById('toDate').value=ds.at(-1) || '';
+  refresh();
+});
+
+document.getElementById('downloadFiltered').addEventListener('click',()=>{
+  csvDownload(filtered,'telecominsight_filtered_records.csv');
+});
+
+document.getElementById('exportLocations').addEventListener('click',exportGeo);
+
+startMap();
+loadData();
+</script>
+</body>
+</html>
